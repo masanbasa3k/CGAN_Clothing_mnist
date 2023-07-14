@@ -1,22 +1,13 @@
 import numpy as np
-from numpy import expand_dims
-from numpy import zeros
-from numpy import ones
-from numpy.random import randn
-from numpy.random import randint
+from numpy import expand_dims, zeros, ones, random
 from keras.datasets.fashion_mnist import load_data
 from keras.optimizers import RMSprop
 from keras.models import Model
-from keras.layers import Input
-from keras.layers import Dense
-from keras.layers import Reshape
-from keras.layers import Flatten
-from keras.layers import Conv2D
-from keras.layers import Conv2DTranspose
-from keras.layers import LeakyReLU
-from keras.layers import Dropout
-from keras.layers import Embedding
-from keras.layers import Concatenate
+from keras.layers import (
+    Input, Dense, Reshape, Flatten, Conv2D, Conv2DTranspose, 
+    LeakyReLU, Dropout, Embedding, Concatenate
+)
+
 
 # define the standalone discriminator model
 def build_discriminator(in_shape=(28, 28, 1), n_classes=10):
@@ -48,8 +39,8 @@ def build_discriminator(in_shape=(28, 28, 1), n_classes=10):
     # define model
     model = Model([in_image, in_label], out_layer)
     # compile model
-    opt = RMSprop(lr=0.0002)
-    model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
+    optimizer = RMSprop(lr=0.0002)
+    model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
     return model
 
 # define the standalone generator model
@@ -97,8 +88,8 @@ def define_gan(g_model, d_model):
     # define gan model as taking noise and label and outputting a classification
     model = Model([gen_noise, gen_label], gan_output)
     # compile model
-    opt = RMSprop(lr=0.0002)
-    model.compile(loss='binary_crossentropy', optimizer=opt)
+    optimizer = RMSprop(lr=0.0002)
+    model.compile(loss='binary_crossentropy', optimizer=optimizer)
     return model
 
 # load fashion mnist images
@@ -118,7 +109,7 @@ def generate_real_samples(dataset, n_samples):
     # split into images and labels
     images, labels = dataset
     # choose random instances
-    ix = randint(0, images.shape[0], n_samples)
+    ix = random.randint(0, images.shape[0], n_samples)
     # select images and labels
     X, labels = images[ix], labels[ix]
     # generate class labels
@@ -128,11 +119,11 @@ def generate_real_samples(dataset, n_samples):
 # generate points in latent space as input for the generator
 def generate_latent_points(latent_dim, n_samples, n_classes=10):
     # generate points in the latent space
-    x_input = randn(latent_dim * n_samples)
+    x_input = random.randn(latent_dim * n_samples)
     # reshape into a batch of inputs for the network
     z_input = x_input.reshape(n_samples, latent_dim)
     # generate labels
-    labels = randint(0, n_classes, n_samples)
+    labels = random.randint(0, n_classes, n_samples)
     return [z_input, labels]
 
 # use the generator to generate n fake examples, with class labels
@@ -146,7 +137,7 @@ def generate_fake_samples(generator, latent_dim, n_samples):
     return [images, labels_input], y
 
 # train the generator and discriminator
-def train(g_model, d_model, gan_model, dataset, latent_dim, n_epochs=1, n_batch=256):
+def train(g_model, d_model, gan_model, dataset, latent_dim, n_epochs=2, n_batch=256):
     bat_per_epo = int(dataset[0].shape[0] / n_batch)
     half_batch = int(n_batch / 2)
     # manually enumerate epochs
@@ -168,8 +159,7 @@ def train(g_model, d_model, gan_model, dataset, latent_dim, n_epochs=1, n_batch=
             # update the generator via the discriminator's error
             g_loss = gan_model.train_on_batch([z_input, labels_input], y_gan)
             # summarize loss on this batch
-            print('>%d, %d/%d, d1=%.3f, d2=%.3f g=%.3f' %
-                  (i + 1, j + 1, bat_per_epo, d_loss1, d_loss2, g_loss))
+            print(f'>{i + 1}, {j + 1}/{bat_per_epo}, d1={d_loss1:.3f}, d2={d_loss2:.3f}, g={g_loss:.3f}')
     # save the generator model
     g_model.save('cgan_generator.h5')
 
