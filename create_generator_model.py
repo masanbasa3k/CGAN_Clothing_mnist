@@ -117,8 +117,8 @@ class CGAN():
         y_train = y_train.reshape(-1, 1)
 
         # Adversarial ground truths
-        valid = np.ones((batch_size, 1))
-        fake = np.zeros((batch_size, 1))
+        valid = np.random.uniform(0.9, 1.0, (batch_size, 1))
+        fake = np.random.uniform(0.0, 0.1, (batch_size, 1))
 
         for epoch in range(epochs):
             # Train Discriminator
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     start_time = time.time()
 
     cgan = CGAN()
-    cgan.train(epochs=5001, batch_size=128, sample_interval=500)
+    cgan.train(epochs=1, batch_size=128, sample_interval=500)
 
     fin_time = time.time()
     work_time = fin_time-start_time
