@@ -1,14 +1,12 @@
-
-from keras.datasets.fashion_mnist import load_data
-from keras.layers import Input, Dense, Reshape, Flatten, Dropout, multiply
-from keras.layers import BatchNormalization, Embedding
-from keras.layers import LeakyReLU
-from keras.models import Sequential, Model
-from keras.optimizers import Adam
-
+import tensorflow as tf
+from tensorflow.keras.datasets import fashion_mnist
+from tensorflow.keras.layers import Input, Dense, Reshape, Flatten, Dropout, multiply
+from tensorflow.keras.layers import BatchNormalization, Embedding, LeakyReLU
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers.schedules import ExponentialDecay
 import matplotlib.pyplot as plt
 import time
-
 import numpy as np
 
 class CGAN():
@@ -21,13 +19,20 @@ class CGAN():
         self.num_classes = 10
         self.latent_dim = 100
 
-        optimizer = Adam(0.0002, 0.5)
+        # optimizer = Adam(0.0002, 0.5)
+        initial_learning_rate = 0.0002
+        decay_steps = 1000
+        decay_rate = 0.9
+        self.optimizer = Adam(
+            learning_rate=ExponentialDecay(initial_learning_rate, decay_steps, decay_rate),
+            beta_1=0.5
+        )
 
         # Build and compile the discriminator
         self.discriminator = self.build_discriminator()
-        self.discriminator.compile(loss=['binary_crossentropy'],
-            optimizer=optimizer,
-            metrics=['accuracy'])
+        self.discriminator.compile(loss='binary_crossentropy',
+                                   optimizer=self.optimizer,
+                                   metrics=['accuracy'])
 
         # Build the generator
         self.generator = self.build_generator()
@@ -45,14 +50,12 @@ class CGAN():
         # and the label of that image
         valid = self.discriminator([img, label])
 
-        # The combined model  (stacked generator and discriminator)
+        # The combined model (stacked generator and discriminator)
         # Trains generator to fool discriminator
         self.combined = Model([noise, label], valid)
-        self.combined.compile(loss=['binary_crossentropy'],
-            optimizer=optimizer)
+        self.combined.compile(loss='binary_crossentropy', optimizer=self.optimizer)
 
     def build_generator(self):
-
         model = Sequential()
 
         model.add(Dense(256, input_dim=self.latent_dim))
@@ -79,7 +82,6 @@ class CGAN():
         return Model([noise, label], img)
 
     def build_discriminator(self):
-
         model = Sequential()
 
         model.add(Dense(512, input_dim=np.prod(self.img_shape)))
@@ -106,9 +108,8 @@ class CGAN():
         return Model([img, label], validity)
 
     def train(self, epochs, batch_size=128, sample_interval=50):
-
         # Load the dataset
-        (X_train, y_train), (_, _) = load_data()
+        (X_train, y_train), (_, _) = fashion_mnist.load_data()
 
         # Configure input
         X_train = (X_train.astype(np.float32) - 127.5) / 127.5
@@ -120,11 +121,7 @@ class CGAN():
         fake = np.zeros((batch_size, 1))
 
         for epoch in range(epochs):
-
-            # ---------------------
-            #  Train Discriminator
-            # ---------------------
-
+            # Train Discriminator
             # Select a random half batch of images
             idx = np.random.randint(0, X_train.shape[0], batch_size)
             imgs, labels = X_train[idx], y_train[idx]
@@ -140,10 +137,7 @@ class CGAN():
             d_loss_fake = self.discriminator.train_on_batch([gen_imgs, labels], fake)
             d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
 
-            # ---------------------
-            #  Train Generator
-            # ---------------------
-
+            # Train Generator
             # Condition on labels
             sampled_labels = np.random.randint(0, 10, batch_size).reshape(-1, 1)
 
@@ -153,12 +147,11 @@ class CGAN():
             # Plot the progress
             print(f"{epoch} [D loss: {d_loss[0]}, acc.: {100*d_loss[1]:.2f}%] [G loss: {g_loss}]")
 
-
             # If at save interval => save generated image samples
             if epoch % sample_interval == 0:
                 self.sample_images(epoch)
 
-        self.generator.save('test_model.h5')
+        tensorflow.keras.models.save_model(self.generator, 'test_model.h5')
 
     def sample_images(self, epoch):
         r, c = 2, 5
@@ -170,7 +163,7 @@ class CGAN():
         # Rescale images 0 - 1
         gen_imgs = 0.5 * gen_imgs + 0.5
 
-        fig, axs = plt.subplots(r, c)
+        fig, axs = plt.subplots(r, c, figsize=(10, 4))
         cnt = 0
         for i in range(r):
             for j in range(c):
@@ -189,4 +182,5 @@ if __name__ == '__main__':
     cgan.train(epochs=5001, batch_size=128, sample_interval=500)
 
     fin_time = time.time()
-    print(fin_time-start_time)#318.0934681892395
+    work_time = fin_time-start_time
+    print(work_time)#318.0934681892395
