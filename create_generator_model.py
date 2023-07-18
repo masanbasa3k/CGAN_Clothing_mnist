@@ -151,7 +151,7 @@ class CGAN():
             if epoch % sample_interval == 0:
                 self.sample_images(epoch)
 
-        tf.keras.models.save_model(self.generator, 'test_model.h5')
+        tf.keras.models.save_model(self.generator, 'new_model.h5')
 
     def sample_images(self, epoch):
         r, c = 2, 5
